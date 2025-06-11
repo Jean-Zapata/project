@@ -1,19 +1,8 @@
 import React, { useState, useEffect } from "react";
-import {
-  Search,
-  Filter,
-  Download,
-  Users,
-  Mail,
-  Phone,
-  MapPin,
-  Plus,
-  Edit,
-  Trash2,
-} from "lucide-react";
+import { Search, Filter, Download, Users, Mail, Phone, MapPin, Edit, Trash2 } from "lucide-react";  // Importando correctamente Download
 import Modal from "../common/Modal";
 
-// Define the Employee interface to match your Java model
+// Definición de la interfaz Employee (Empleado)
 interface Employee {
   id?: number;
   nombres: string;
@@ -26,10 +15,19 @@ interface Employee {
   fechaIngreso: string;
   salario?: number;
   estado: string;
+  usuarioId?: number;  // Agregado para almacenar el usuario asociado
+}
+
+// Definición de la interfaz Usuario (User)
+interface Usuario {
+  id: number;
+  username: string;
+  email: string;
 }
 
 const EmployeeDirectory: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<Usuario[]>([]);  // Estado para almacenar los usuarios
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,11 +46,13 @@ const EmployeeDirectory: React.FC = () => {
     fechaIngreso: "",
     salario: 0,
     estado: "ACTIVO",
+    usuarioId: 0,  // Inicializar usuarioId
   });
 
   const API_BASE_URL = "http://localhost:9898/api/empleados";
+  const API_USERS_URL = "http://localhost:9898/api/usuarios";  // URL para obtener usuarios
 
-  // Fetch employees from API
+  // Función para obtener empleados
   const fetchEmployees = async () => {
     try {
       setLoading(true);
@@ -70,7 +70,21 @@ const EmployeeDirectory: React.FC = () => {
     }
   };
 
-  // Delete employee
+  // Función para obtener usuarios para el select
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch(API_USERS_URL);
+      if (!response.ok) {
+        throw new Error("Error al cargar usuarios");
+      }
+      const data = await response.json();
+      setUsers(data);  // Establecer los usuarios obtenidos en el estado
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cargar usuarios");
+    }
+  };
+
+  // Función para eliminar empleado
   const deleteEmployee = async (id: number) => {
     if (!window.confirm("¿Está seguro de eliminar este empleado?")) {
       return;
@@ -91,7 +105,7 @@ const EmployeeDirectory: React.FC = () => {
     }
   };
 
-  // Edit employee functions
+  // Funciones para abrir y cerrar el modal de edición
   const openEditModal = (employee: Employee) => {
     setEditingEmployee(employee);
     setFormData({
@@ -100,6 +114,7 @@ const EmployeeDirectory: React.FC = () => {
       telefono: employee.telefono || "",
       direccion: employee.direccion || "",
       salario: employee.salario || 0,
+      usuarioId: employee.usuarioId || 0,  // Establecer el usuarioId
     });
     setShowEditModal(true);
   };
@@ -118,9 +133,11 @@ const EmployeeDirectory: React.FC = () => {
       fechaIngreso: "",
       salario: 0,
       estado: "ACTIVO",
+      usuarioId: 0,  // Reset usuarioId
     });
   };
 
+  // Función para manejar el cambio en los campos del formulario
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -131,6 +148,7 @@ const EmployeeDirectory: React.FC = () => {
     }));
   };
 
+  // Función para actualizar empleado
   const updateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEmployee?.id) return;
@@ -141,7 +159,7 @@ const EmployeeDirectory: React.FC = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(formData), // Enviar usuarioId con la solicitud
       });
 
       if (response.ok) {
@@ -162,12 +180,15 @@ const EmployeeDirectory: React.FC = () => {
     }
   };
 
+  // Obtener empleados y usuarios al cargar el componente
   useEffect(() => {
     fetchEmployees();
+    fetchUsers();  // Obtener usuarios para el select
   }, []);
 
   const statuses = ["ACTIVO", "INACTIVO"];
 
+  // Filtrar empleados según la búsqueda y el estado
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch =
       employee.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -181,6 +202,7 @@ const EmployeeDirectory: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Función para exportar los empleados a un archivo CSV
   const handleExport = () => {
     const csvContent = [
       [
@@ -218,12 +240,14 @@ const EmployeeDirectory: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Obtener el color del estado
   const getStatusColor = (status: string) => {
     return status === "ACTIVO"
       ? "bg-green-100 text-green-800"
       : "bg-red-100 text-red-800";
   };
 
+  // Formatear el salario
   const formatCurrency = (amount?: number) => {
     if (!amount) return "No especificado";
     return new Intl.NumberFormat("es-PE", {
@@ -232,6 +256,7 @@ const EmployeeDirectory: React.FC = () => {
     }).format(amount);
   };
 
+  // Formatear la fecha
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("es-PE");
   };
@@ -508,12 +533,12 @@ const EmployeeDirectory: React.FC = () => {
                       {formatDate(employee.fechaIngreso)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button 
-    onClick={() => openEditModal(employee)}
-    className="text-blue-600 hover:text-blue-900"
-  >
-    Editar
-  </button>
+                      <button
+                        onClick={() => openEditModal(employee)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Editar
+                      </button>
                       <button
                         onClick={() =>
                           employee.id && deleteEmployee(employee.id)
@@ -719,6 +744,32 @@ const EmployeeDirectory: React.FC = () => {
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+          </div>
+
+          {/* Usuario select */}
+          <div>
+            <label
+              htmlFor="usuarioId"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              ID de Usuario
+            </label>
+            <select
+              id="usuarioId"
+              name="usuarioId"
+              value={formData.usuarioId}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="" disabled>
+                Seleccionar Usuario
+              </option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.username} - {user.email}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex justify-end space-x-3">

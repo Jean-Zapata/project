@@ -175,6 +175,10 @@ class RoleService {
       throw error;
     }
   }
+
+  async getRoles(): Promise<Role[]> {
+    return this.getAllRoles();
+  }
 }
 
 export default new RoleService();

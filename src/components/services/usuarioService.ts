@@ -44,9 +44,14 @@ export interface Usuario {
     id?: string;
     firstName: string;
     lastName: string;
-    department?: string;
-    position?: string;
+    dni?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    birthDate?: string;
     hireDate?: string;
+    salary?: number;
+    status?: string;
   };
 }
 
@@ -66,6 +71,30 @@ export interface CreateUsuarioDTO {
     fechaIngreso: string;
     salario?: number;
   };
+}
+
+export interface UpdateUsuarioDTO {
+  username?: string;
+  email?: string;
+  isActive?: boolean;
+  roleId?: number;
+  employee?: {
+    firstName?: string;
+    lastName?: string;
+    dni?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    birthDate?: string;
+    hireDate?: string;
+    salary?: number;
+    status?: string;
+  };
+}
+
+interface UserStats {
+  activeUsers: number;
+  totalUsers: number;
 }
 
 class UsuarioService {
@@ -88,9 +117,14 @@ class UsuarioService {
         id: apiUsuario.empleado.id?.toString(),
         firstName: apiUsuario.empleado.nombres,
         lastName: apiUsuario.empleado.apellidos,
-        department: apiUsuario.empleado.departamento,
-        position: apiUsuario.empleado.cargo,
-        hireDate: apiUsuario.empleado.fechaContratacion
+        dni: apiUsuario.empleado.dni,
+        email: apiUsuario.empleado.email,
+        phone: apiUsuario.empleado.telefono,
+        address: apiUsuario.empleado.direccion,
+        birthDate: apiUsuario.empleado.fechaNacimiento,
+        hireDate: apiUsuario.empleado.fechaIngreso,
+        salary: apiUsuario.empleado.salario,
+        status: apiUsuario.empleado.estado
       } : undefined
     };
   }
@@ -105,13 +139,20 @@ class UsuarioService {
         nombre: usuario.role.name,
         descripcion: usuario.role.description
       } : undefined,
-      empleado: usuario.employee ? {
-        nombres: usuario.employee.firstName,
-        apellidos: usuario.employee.lastName,
-        departamento: usuario.employee.department,
-        cargo: usuario.employee.position,
-        fechaContratacion: usuario.employee.hireDate
-      } : undefined
+      empleado: usuario.employee ? (
+        usuario.employee.hireDate !== undefined ? {
+          nombres: usuario.employee.firstName,
+          apellidos: usuario.employee.lastName,
+          dni: usuario.employee.dni,
+          email: usuario.employee.email,
+          telefono: usuario.employee.phone,
+          direccion: usuario.employee.address,
+          fechaNacimiento: usuario.employee.birthDate,
+          fechaIngreso: usuario.employee.hireDate,
+          salario: usuario.employee.salary,
+          estado: usuario.employee.status
+        } : undefined
+      ) : undefined
     };
   }
 
@@ -143,13 +184,12 @@ class UsuarioService {
     }
   }
 
-  async createUser(userData: CreateUsuarioDTO): Promise<void> {
+  async createUser(userData: CreateUsuarioDTO): Promise<Usuario> {
     try {
       const payload = {
         username: userData.username,
         password: userData.password,
         email: userData.email,
-        activo: true,
         rol: { id: userData.roleId },
         empleado: userData.employee ? {
           nombres: userData.employee.nombres,
@@ -160,13 +200,10 @@ class UsuarioService {
           direccion: userData.employee.direccion,
           fechaNacimiento: userData.employee.fechaNacimiento,
           fechaIngreso: userData.employee.fechaIngreso,
-          salario: userData.employee.salario,
-          estado: 'ACTIVO'
+          salario: userData.employee.salario
         } : undefined
       };
 
-      console.log('Payload a enviar:', payload);
-      
       const response = await fetch(this.baseURL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -174,29 +211,67 @@ class UsuarioService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(`Error: ${response.status} - ${errorData?.message || response.statusText}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
       }
+
+      const createdUser: UsuarioAPI = await response.json();
+      return this.mapApiToUsuario(createdUser);
     } catch (error) {
-      console.error('Error detallado:', error);
+      console.error('Error creating user:', error);
       throw error;
     }
   }
 
-  async updateUser(id: string, userData: Partial<Usuario>): Promise<void> {
+  async updateUser(id: string, userData: UpdateUsuarioDTO): Promise<Usuario> {
     try {
-      const apiUser = this.mapUsuarioToApi(userData);
+      // Construye el payload según lo que espera la API
+      const payload: any = {};
+      
+      if (userData.username !== undefined) payload.username = userData.username;
+      if (userData.email !== undefined) payload.email = userData.email;
+      if (userData.isActive !== undefined) payload.activo = userData.isActive;
+      
+      // Maneja el rol correctamente
+      if (userData.roleId !== undefined) {
+        payload.rol = { id: userData.roleId };
+      }
+      
+      // Maneja el empleado si existe
+      if (userData.employee) {
+        payload.empleado = {
+          nombres: userData.employee.firstName,
+          apellidos: userData.employee.lastName,
+          dni: userData.employee.dni,
+          email: userData.employee.email,
+          telefono: userData.employee.phone,
+          direccion: userData.employee.address,
+          fechaNacimiento: userData.employee.birthDate,
+          fechaIngreso: userData.employee.hireDate,
+          salario: userData.employee.salary,
+          estado: userData.employee.status
+        };
+      }
+
+      console.log('Payload enviado a la API:', payload);
+
       const response = await fetch(`${this.baseURL}/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(apiUser),
+        body: JSON.stringify(payload),
       });
       
       if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
       }
+
+      const updatedUser: UsuarioAPI = await response.json();
+      console.log('Usuario actualizado recibido de la API:', updatedUser);
+      
+      return this.mapApiToUsuario(updatedUser);
     } catch (error) {
       console.error('Error updating user:', error);
       throw error;
@@ -210,12 +285,40 @@ class UsuarioService {
       });
       
       if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Error ${response.status}`);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
       throw error;
     }
+  }
+
+  async getStats(): Promise<UserStats> {
+    try {
+      const response = await fetch(`${this.baseURL}/stats`);
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      const data = await response.json();
+      
+      // Asegurarse de que todos los campos necesarios estén presentes
+      return {
+        activeUsers: data.activeUsers || 0,
+        totalUsers: data.totalUsers || data.activeUsers || 0
+      };
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      // Retornar valores por defecto en caso de error
+      return {
+        activeUsers: 0,
+        totalUsers: 0
+      };
+    }
+  }
+
+  async getUsuarios(): Promise<Usuario[]> {
+    return this.getAllUsers();
   }
 }
 

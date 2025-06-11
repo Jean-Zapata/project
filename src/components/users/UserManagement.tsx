@@ -1,26 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Filter, Edit, Trash2, Users, Mail, Calendar, Loader2 } from 'lucide-react';
-import { Usuario } from '../../types';
-import Modal from '../common/Modal';
-import UserForm from './UserForm';
-import { useToast } from '../../context/ToastContext';
-import usuarioService from './../services/usuarioService';
+import React, { useState, useEffect } from "react";
+import { Usuario } from "../../types";
+import { Search, Plus, Filter, Edit, Trash2, Loader2 } from "lucide-react";
+import Modal from "../common/Modal";
+import UserForm from "./UserForm";
+import usuarioService from "../services/usuarioService";
+import { useToast } from "../../context/ToastContext";
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
   const { addToast } = useToast();
 
-  // Cargar usuarios al montar el componente
   useEffect(() => {
     loadUsers();
   }, []);
@@ -32,26 +31,29 @@ const UserManagement: React.FC = () => {
       setUsers(usersData);
     } catch (error) {
       addToast({
-        type: 'error',
-        message: 'Error al cargar los usuarios. Por favor, intenta de nuevo.'
+        type: "error",
+        message: "Error al cargar los usuarios. Por favor, intenta de nuevo.",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.employee?.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.employee?.lastName.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesRole = filterRole === 'all' || user.role.id.toString() === filterRole;
-    const matchesStatus = filterStatus === 'all' || 
-      (filterStatus === 'active' && user.isActive) ||
-      (filterStatus === 'inactive' && !user.isActive);
-    
+      (user.employee?.firstName &&
+        user.employee.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (user.employee?.lastName && user.employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesRole =
+      filterRole === "all" || user.role.id.toString() === filterRole;
+    const matchesStatus =
+      filterStatus === "all" ||
+      (filterStatus === "active" && user.isActive) ||
+      (filterStatus === "inactive" && !user.isActive);
+
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -70,25 +72,27 @@ const UserManagement: React.FC = () => {
   };
 
   const handleDeleteUser = async (user: Usuario) => {
-    if (!window.confirm(`¿Estás seguro de que quieres eliminar al usuario "${user.username}"?`)) {
+    if (
+      !window.confirm(
+        `¿Estás seguro de que quieres eliminar al usuario "${user.username}"?`
+      )
+    ) {
       return;
     }
 
     try {
       setDeleteLoading(user.id!);
       await usuarioService.deleteUser(user.id!);
-      
-      // Actualizar la lista local
-      setUsers(prevUsers => prevUsers.filter(u => u.id !== user.id));
-      
+      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== user.id));
+
       addToast({
-        type: 'success',
-        message: `Usuario "${user.username}" eliminado exitosamente.`
+        type: "success",
+        message: `Usuario "${user.username}" eliminado exitosamente.`,
       });
     } catch (error) {
       addToast({
-        type: 'error',
-        message: `Error al eliminar el usuario "${user.username}". Por favor, intenta de nuevo.`
+        type: "error",
+        message: `Error al eliminar el usuario "${user.username}". Por favor, intenta de nuevo.`,
       });
     } finally {
       setDeleteLoading(null);
@@ -98,62 +102,100 @@ const UserManagement: React.FC = () => {
   const handleUserSubmit = async (userData: any) => {
     try {
       if (selectedUser) {
-        // Para actualización
+        // Actualización
         const updateData = {
-          ...userData,
-          activo: true,
-          rol: { id: Number(userData.roleId) },
-          empleado: userData.employee ? {
-            nombres: userData.employee.nombres,
-            apellidos: userData.employee.apellidos,
-            departamento: userData.employee.departamento || undefined,
-            cargo: userData.employee.cargo || undefined,
-            fechaContratacion: userData.employee.fechaContratacion || undefined
-          } : undefined
+          username: userData.username,
+          email: userData.email,
+          isActive: userData.isActive ?? true,
+          roleId: Number(userData.roleId), // Envía solo el ID del rol
+          employee:
+            userData.employee &&
+            (userData.employee.nombres || userData.employee.firstName)
+              ? {
+                  firstName:
+                    userData.employee.nombres || userData.employee.firstName,
+                  lastName:
+                    userData.employee.apellidos || userData.employee.lastName,
+                  dni: userData.employee.dni,
+                  email: userData.employee.email,
+                  phone: userData.employee.telefono || userData.employee.phone,
+                  address:
+                    userData.employee.direccion || userData.employee.address,
+                  birthDate:
+                    userData.employee.fechaNacimiento ||
+                    userData.employee.birthDate,
+                  hireDate:
+                    userData.employee.fechaIngreso ||
+                    userData.employee.hireDate,
+                  salary: userData.employee.salario || userData.employee.salary,
+                  status: userData.employee.estado || userData.employee.status,
+                }
+              : undefined,
         };
 
-        await usuarioService.updateUser(selectedUser.id!, updateData);
-        setUsers(prevUsers => 
-          prevUsers.map(user => 
-            user.id === selectedUser.id 
-              ? { ...user, ...userData }
-              : user
+        const updatedUser = await usuarioService.updateUser(
+          selectedUser.id!,
+          updateData
+        );
+
+        setUsers((prevUsers) =>
+          prevUsers.map((user) =>
+            user.id === selectedUser.id ? updatedUser : user
           )
         );
+
         addToast({
-          type: 'success',
-          message: 'Usuario actualizado exitosamente!'
+          type: "success",
+          message: "Usuario actualizado exitosamente!",
         });
       } else {
-        // Para creación
+        // Creación
         const createData = {
           username: userData.username,
           password: userData.password,
           email: userData.email,
           roleId: Number(userData.roleId),
-          employee: userData.employee?.nombres && userData.employee?.apellidos ? {
-            nombres: userData.employee.nombres,
-            apellidos: userData.employee.apellidos,
-            departamento: userData.employee.departamento || undefined,
-            cargo: userData.employee.cargo || undefined,
-            fechaContratacion: userData.employee.fechaContratacion || undefined
-          } : undefined
+          employee:
+            userData.employee &&
+            (userData.employee.nombres || userData.employee.firstName)
+              ? {
+                  nombres:
+                    userData.employee.nombres || userData.employee.firstName,
+                  apellidos:
+                    userData.employee.apellidos || userData.employee.lastName,
+                  dni: userData.employee.dni,
+                  email: userData.employee.email,
+                  telefono:
+                    userData.employee.telefono || userData.employee.phone,
+                  direccion:
+                    userData.employee.direccion || userData.employee.address,
+                  fechaNacimiento:
+                    userData.employee.fechaNacimiento ||
+                    userData.employee.birthDate,
+                  fechaIngreso:
+                    userData.employee.fechaIngreso ||
+                    userData.employee.hireDate ||
+                    new Date().toISOString(),
+                  salario:
+                    userData.employee.salario || userData.employee.salary,
+                }
+              : undefined,
         };
 
-        console.log('Datos de creación:', createData);
-        await usuarioService.createUser(createData);
-        await loadUsers();
+        const newUser = await usuarioService.createUser(createData);
+        setUsers((prevUsers) => [...prevUsers, newUser]);
         addToast({
-          type: 'success',
-          message: 'Usuario creado exitosamente!'
+          type: "success",
+          message: "Usuario creado exitosamente!",
         });
       }
       setShowUserModal(false);
     } catch (error: any) {
-      console.error('Error en handleUserSubmit:', error);
       addToast({
-        type: 'error',
-        message: `Error al ${selectedUser ? 'actualizar' : 'crear'} el usuario: ${error.message}`
+        type: "error",
+        message: `Error al ${
+          selectedUser ? "actualizar" : "crear"
+        } el usuario: ${error.message}`,
       });
     }
   };
@@ -174,7 +216,9 @@ const UserManagement: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gestión de Usuarios</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Gestión de Usuarios
+          </h2>
           <p className="mt-1 text-sm text-gray-500">
             Administra los usuarios del sistema
           </p>
@@ -186,54 +230,6 @@ const UserManagement: React.FC = () => {
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Usuario
         </button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="w-6 h-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Usuarios</p>
-              <p className="text-2xl font-bold text-gray-900">{users.length}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Users className="w-6 h-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Usuarios Activos</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {users.filter(u => u.isActive).length}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Calendar className="w-6 h-6 text-yellow-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Nuevos este mes</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {users.filter(u => {
-                  const createdAt = new Date(u.createdAt);
-                  const now = new Date();
-                  return createdAt.getMonth() === now.getMonth() &&
-                         createdAt.getFullYear() === now.getFullYear();
-                }).length}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Filters */}
@@ -249,7 +245,7 @@ const UserManagement: React.FC = () => {
               className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          
+
           <select
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
@@ -259,7 +255,7 @@ const UserManagement: React.FC = () => {
             <option value="1">Administrador</option>
             <option value="2">Usuario</option>
           </select>
-          
+
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as any)}
@@ -269,7 +265,7 @@ const UserManagement: React.FC = () => {
             <option value="active">Activos</option>
             <option value="inactive">Inactivos</option>
           </select>
-          
+
           <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             <Filter className="w-4 h-4 mr-2" />
             Más Filtros
@@ -283,22 +279,40 @@ const UserManagement: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Usuario
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Rol
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Estado
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Departamento
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  DNI
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Último Acceso
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Acciones
                 </th>
               </tr>
@@ -311,19 +325,23 @@ const UserManagement: React.FC = () => {
                       <div className="flex-shrink-0 h-10 w-10">
                         <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                           <span className="text-blue-600 font-medium">
-                            {user.employee ? 
-                              `${user.employee.firstName[0]}${user.employee.lastName[0]}` : 
-                              user.username.substring(0, 2).toUpperCase()}
+                            {user.employee
+                              ? `${user.employee.firstName?.[0] || ""}${
+                                  user.employee.lastName?.[0] || ""
+                                }`
+                              : user.username.substring(0, 2).toUpperCase()}
                           </span>
                         </div>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {user.employee ? 
-                            `${user.employee.firstName} ${user.employee.lastName}` : 
-                            user.username}
+                          {user.employee
+                            ? `${user.employee.firstName || ""} ${user.employee.lastName || ""}`.trim() || user.username
+                            : user.username}
                         </div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
+                        <div className="text-sm text-gray-500">
+                          {user.email}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -333,19 +351,23 @@ const UserManagement: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      user.isActive
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {user.isActive ? 'Activo' : 'Inactivo'}
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        user.isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {user.isActive ? "Activo" : "Inactivo"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.employee?.department || '-'}
+                    {user.employee?.dni || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Nunca'}
+                    {user.lastLogin
+                      ? new Date(user.lastLogin).toLocaleString()
+                      : "Nunca"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
@@ -378,14 +400,16 @@ const UserManagement: React.FC = () => {
         <div className="bg-white px-4 py-3 flex items-center justify-between border border-gray-200 rounded-lg">
           <div className="flex-1 flex justify-between sm:hidden">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
             >
               Anterior
             </button>
             <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               disabled={currentPage === totalPages}
               className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
             >
@@ -395,11 +419,13 @@ const UserManagement: React.FC = () => {
           <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-gray-700">
-                Mostrando <span className="font-medium">{startIndex + 1}</span> a{' '}
+                Mostrando <span className="font-medium">{startIndex + 1}</span>{" "}
+                a{" "}
                 <span className="font-medium">
                   {Math.min(startIndex + itemsPerPage, filteredUsers.length)}
-                </span>{' '}
-                de <span className="font-medium">{filteredUsers.length}</span> resultados
+                </span>{" "}
+                de <span className="font-medium">{filteredUsers.length}</span>{" "}
+                resultados
               </p>
             </div>
             <div>
@@ -410,8 +436,8 @@ const UserManagement: React.FC = () => {
                     onClick={() => setCurrentPage(index + 1)}
                     className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                       currentPage === index + 1
-                        ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                        ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                        : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
                     }`}
                   >
                     {index + 1}
@@ -427,7 +453,7 @@ const UserManagement: React.FC = () => {
       <Modal
         isOpen={showUserModal}
         onClose={() => setShowUserModal(false)}
-        title={selectedUser ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
+        title={selectedUser ? "Editar Usuario" : "Crear Nuevo Usuario"}
       >
         <UserForm
           user={selectedUser}

@@ -8,6 +8,7 @@ const ToastContainer: React.FC = () => {
   return (
     <div className="fixed top-0 right-0 z-50 p-6 space-y-4 pointer-events-none">
       {toasts.map(toast => (
+        // Usamos el `id` único generado como la clave
         <Toast key={toast.id} toast={toast} onRemove={removeToast} />
       ))}
     </div>

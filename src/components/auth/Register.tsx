@@ -3,6 +3,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import Loading from '../common/Loading';
+import AuthService from '../services/AuthService';
+import UsuarioService from '../services/usuarioService';
+import RolService from '../services/roleService';
 
 interface RegisterProps {
   onSwitchToLogin: () => void;
@@ -21,9 +24,22 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isLoading, setIsLoading] = useState(false);
   
-  const { register, isLoading } = useAuth();
   const { addToast } = useToast();
+
+  const [roles, setRoles] = useState<any[]>([]);
+  React.useEffect(() => {
+    async function fetchRoles() {
+      try {
+        const rolesData = await RolService.getAllRoles();
+        setRoles(rolesData);
+      } catch (error) {
+        addToast({ type: 'error', message: 'Error fetching roles' });
+      }
+    }
+    fetchRoles();
+  }, []);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -62,26 +78,28 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
+    setIsLoading(true);
+    
     try {
-      await register({
+      const userResponse = await UsuarioService.registerUser({
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
         role: formData.role
       });
-      addToast({
-        type: 'success',
-        message: 'Account created successfully!'
-      });
+      
+      if (userResponse) {
+        addToast({ type: 'success', message: 'Account created successfully!' });
+        onSwitchToLogin();
+      }
     } catch (error) {
-      addToast({
-        type: 'error',
-        message: 'Failed to create account. Please try again.'
-      });
+      addToast({ type: 'error', message: 'Failed to create account. Please try again.' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -94,7 +112,6 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
       [name]: type === 'checkbox' ? checked : value
     }));
     
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -185,8 +202,11 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
             onChange={handleChange}
             className="block w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
           >
-            <option value="employee">Employee</option>
-            <option value="admin">Administrator</option>
+            {roles.map((role) => (
+              <option key={role.id} value={role.nombre}>
+                {role.nombre}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -281,7 +301,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
           disabled={isLoading}
           className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {isLoading ? <Loading size="sm\" text="" /> : 'Create Account'}
+          {isLoading ? <Loading size="sm" text="" /> : 'Create Account'}
         </button>
       </form>
 

@@ -13,7 +13,8 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [toasts, setToasts] = useState<ToastType[]>([]);
 
   const addToast = (toast: Omit<ToastType, 'id'>) => {
-    const id = Date.now().toString();
+    // Usamos Date.now() + un valor aleatorio para generar un id único
+    const id = `${Date.now()}-${Math.random()}`;
     const newToast = { ...toast, id };
     setToasts(prev => [...prev, newToast]);
 
