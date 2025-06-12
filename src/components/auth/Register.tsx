@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import Loading from '../common/Loading';
 import AuthService from '../services/AuthService';
-import UsuarioService from '../services/usuarioService';
 import RolService from '../services/roleService';
+import { RegisterData } from '../services/AuthService';
 
 interface RegisterProps {
   onSwitchToLogin: () => void;
@@ -18,24 +18,29 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'employee' as 'admin' | 'employee',
+    roleId: '',
     termsAccepted: false
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [roles, setRoles] = useState<any[]>([]);
   
   const { addToast } = useToast();
 
-  const [roles, setRoles] = useState<any[]>([]);
-  React.useEffect(() => {
+  useEffect(() => {
     async function fetchRoles() {
       try {
         const rolesData = await RolService.getAllRoles();
-        setRoles(rolesData);
+        // Filtrar solo roles activos
+        const activeRoles = rolesData.filter(role => role.isActive);
+        setRoles(activeRoles);
       } catch (error) {
-        addToast({ type: 'error', message: 'Error fetching roles' });
+        addToast({ 
+          type: 'error', 
+          message: 'Error al cargar los roles. Por favor, intenta de nuevo.' 
+        });
       }
     }
     fetchRoles();
@@ -45,31 +50,35 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
     const newErrors: { [key: string]: string } = {};
     
     if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
+      newErrors.firstName = 'El nombre es requerido';
     }
     
     if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
+      newErrors.lastName = 'El apellido es requerido';
     }
     
     if (!formData.email) {
-      newErrors.email = 'Email is required';
+      newErrors.email = 'El correo electrónico es requerido';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+      newErrors.email = 'El correo electrónico no es válido';
     }
     
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = 'La contraseña es requerida';
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
     }
     
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = 'Las contraseñas no coinciden';
+    }
+
+    if (!formData.roleId) {
+      newErrors.roleId = 'Debes seleccionar un rol';
     }
     
     if (!formData.termsAccepted) {
-      newErrors.termsAccepted = 'You must accept the terms and conditions';
+      newErrors.termsAccepted = 'Debes aceptar los términos y condiciones';
     }
     
     setErrors(newErrors);
@@ -84,20 +93,28 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
     setIsLoading(true);
     
     try {
-      const userResponse = await UsuarioService.registerUser({
+      const registerData: RegisterData = {
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        role: formData.role
-      });
+        roleId: Number(formData.roleId)
+      };
+
+      const response = await AuthService.register(registerData);
       
-      if (userResponse) {
-        addToast({ type: 'success', message: 'Account created successfully!' });
+      if (response) {
+        addToast({ 
+          type: 'success', 
+          message: '¡Cuenta creada exitosamente! Por favor, inicia sesión.' 
+        });
         onSwitchToLogin();
       }
-    } catch (error) {
-      addToast({ type: 'error', message: 'Failed to create account. Please try again.' });
+    } catch (error: any) {
+      addToast({ 
+        type: 'error', 
+        message: error.message || 'Error al crear la cuenta. Por favor, intenta de nuevo.' 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -120,15 +137,15 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
-        <p className="mt-2 text-gray-600">Join our employee management system</p>
+        <h2 className="text-3xl font-bold text-gray-900">Crear Cuenta</h2>
+        <p className="mt-2 text-gray-600">Únete a nuestro sistema de gestión de empleados</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-              First Name
+              Nombre
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -143,7 +160,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
                 className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                   errors.firstName ? 'border-red-300 bg-red-50' : 'border-gray-300'
                 }`}
-                placeholder="First name"
+                placeholder="Nombre"
               />
             </div>
             {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
@@ -151,7 +168,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
 
           <div>
             <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-              Last Name
+              Apellido
             </label>
             <input
               id="lastName"
@@ -162,7 +179,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
               className={`block w-full px-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                 errors.lastName ? 'border-red-300 bg-red-50' : 'border-gray-300'
               }`}
-              placeholder="Last name"
+              placeholder="Apellido"
             />
             {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
           </div>
@@ -170,7 +187,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
 
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-            Email Address
+            Correo Electrónico
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -185,34 +202,38 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
               className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                 errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
               }`}
-              placeholder="Enter your email"
+              placeholder="Ingresa tu correo electrónico"
             />
           </div>
           {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
         </div>
 
         <div>
-          <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
-            Role
+          <label htmlFor="roleId" className="block text-sm font-medium text-gray-700 mb-2">
+            Rol
           </label>
           <select
-            id="role"
-            name="role"
-            value={formData.role}
+            id="roleId"
+            name="roleId"
+            value={formData.roleId}
             onChange={handleChange}
-            className="block w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+            className={`block w-full px-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+              errors.roleId ? 'border-red-300 bg-red-50' : 'border-gray-300'
+            }`}
           >
+            <option value="">Selecciona un rol</option>
             {roles.map((role) => (
-              <option key={role.id} value={role.nombre}>
-                {role.nombre}
+              <option key={role.id} value={role.id}>
+                {role.name}
               </option>
             ))}
           </select>
+          {errors.roleId && <p className="mt-1 text-sm text-red-600">{errors.roleId}</p>}
         </div>
 
         <div>
           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-            Password
+            Contraseña
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -227,7 +248,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
               className={`block w-full pl-10 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                 errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
               }`}
-              placeholder="Enter your password"
+              placeholder="Ingresa tu contraseña"
             />
             <button
               type="button"
@@ -246,7 +267,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
 
         <div>
           <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-            Confirm Password
+            Confirmar Contraseña
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -261,7 +282,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
               className={`block w-full pl-10 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                 errors.confirmPassword ? 'border-red-300 bg-red-50' : 'border-gray-300'
               }`}
-              placeholder="Confirm your password"
+              placeholder="Confirma tu contraseña"
             />
             <button
               type="button"
@@ -287,35 +308,36 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
             onChange={handleChange}
             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
-          <label htmlFor="termsAccepted" className="ml-2 block text-sm text-gray-700">
-            I agree to the{' '}
-            <a href="#" className="text-blue-600 hover:text-blue-500">
-              Terms and Conditions
-            </a>
+          <label htmlFor="termsAccepted" className="ml-2 block text-sm text-gray-900">
+            Acepto los <a href="#" className="text-blue-600 hover:text-blue-500">términos y condiciones</a>
           </label>
         </div>
         {errors.termsAccepted && <p className="mt-1 text-sm text-red-600">{errors.termsAccepted}</p>}
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? <Loading size="sm" text="" /> : 'Create Account'}
-        </button>
-      </form>
-
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
-          Already have an account?{' '}
+        <div>
           <button
-            onClick={onSwitchToLogin}
-            className="font-medium text-blue-600 hover:text-blue-500"
+            type="submit"
+            disabled={isLoading}
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Sign in
+            {isLoading ? (
+              <Loading className="w-5 h-5 text-white" />
+            ) : (
+              'Crear Cuenta'
+            )}
           </button>
-        </p>
-      </div>
+        </div>
+
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={onSwitchToLogin}
+            className="text-sm text-blue-600 hover:text-blue-500"
+          >
+            ¿Ya tienes una cuenta? Inicia sesión
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

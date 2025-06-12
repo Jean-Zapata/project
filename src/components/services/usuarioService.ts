@@ -327,6 +327,81 @@ class UsuarioService {
   async getUsuarios(): Promise<Usuario[]> {
     return this.getAllUsers();
   }
+
+  async registerUser(userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    roleId: number;
+  }): Promise<Usuario> {
+    try {
+      // Generar un username único basado en el email
+      const baseUsername = userData.email.split('@')[0];
+      const timestamp = new Date().getTime();
+      const username = `${baseUsername}${timestamp}`;
+
+      // Primero crear el empleado
+      const empleadoPayload = {
+        nombres: userData.firstName,
+        apellidos: userData.lastName,
+        email: userData.email,
+        fechaIngreso: new Date().toISOString().split('T')[0],
+        estado: 'ACTIVO',
+        salario: 0
+      };
+
+      console.log('Payload de empleado:', empleadoPayload);
+
+      const empleadoResponse = await fetch(`${API_BASE_URL}/empleados`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(empleadoPayload),
+      });
+
+      if (!empleadoResponse.ok) {
+        const errorData = await empleadoResponse.json().catch(() => ({}));
+        console.error('Error al crear empleado:', errorData);
+        throw new Error(errorData.message || `Error al crear empleado: ${empleadoResponse.status}`);
+      }
+
+      const empleadoCreado = await empleadoResponse.json();
+
+      // Luego crear el usuario
+      const usuarioPayload = {
+        username: username,
+        password: userData.password,
+        email: userData.email,
+        activo: true,
+        rol: { id: userData.roleId },
+        empleado: { id: empleadoCreado.id }
+      };
+
+      console.log('Payload de usuario:', usuarioPayload);
+
+      const usuarioResponse = await fetch(this.baseURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(usuarioPayload),
+      });
+
+      if (!usuarioResponse.ok) {
+        const errorData = await usuarioResponse.json().catch(() => ({}));
+        console.error('Error al crear usuario:', errorData);
+        throw new Error(errorData.message || `Error al crear usuario: ${usuarioResponse.status}`);
+      }
+
+      const createdUser: UsuarioAPI = await usuarioResponse.json();
+      return this.mapApiToUsuario(createdUser);
+    } catch (error) {
+      console.error('Error registering user:', error);
+      throw error;
+    }
+  }
 }
 
 export default new UsuarioService();

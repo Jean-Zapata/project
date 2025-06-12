@@ -2,7 +2,23 @@ const API_BASE_URL = 'http://localhost:9898/api';
 
 export interface AuthResponse {
   token: string;
-  usuario: string;  // Este es el nombre del usuario, puedes incluir más info si es necesario.
+  usuario: {
+    id: number;
+    username: string;
+    email: string;
+    role: {
+      id: number;
+      name: string;
+    };
+  };
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  roleId: number;
 }
 
 class AuthService {
@@ -16,31 +32,54 @@ class AuthService {
       });
 
       if (!response.ok) {
-        throw new Error('Credenciales inválidas');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Credenciales inválidas');
       }
 
       const data = await response.json();
-      return data; // Contendrá el token y el usuario
+      return data;
     } catch (error) {
       console.error('Error en el login:', error);
       throw error;
     }
   }
 
-  // Cerrar sesión
-  async logout(token: string): Promise<void> {
+  // Registrar nuevo usuario
+  async register(userData: RegisterData): Promise<AuthResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/logout?token=${token}`, {
+      // Generar un username único basado en el email
+      const baseUsername = userData.email.split('@')[0];
+      const timestamp = new Date().getTime();
+      const username = `${baseUsername}${timestamp}`;
+
+      const payload = {
+        username: username,
+        password: userData.password,
+        email: userData.email,
+        activo: true,
+        rolId: userData.roleId // Cambiado de 'roleId' a 'rolId'
+      };
+
+      console.log('Payload de registro:', payload);
+
+      const response = await fetch(`${this.baseURL}/register`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error('Error al cerrar sesión');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error al registrar:', errorData);
+        throw new Error(errorData.message || `Error al registrar: ${response.status}`);
       }
 
-      console.log('Sesión cerrada exitosamente');
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error('Error al cerrar sesión:', error);
+      console.error('Error en el registro:', error);
       throw error;
     }
   }
