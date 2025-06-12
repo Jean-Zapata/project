@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeTab, onT
     { id: 'documents', label: 'Documents', icon: FileText },
   ];
 
-  const menuItems = user?.role === 'admin' ? adminMenuItems : employeeMenuItems;
+  const menuItems = user?.role?.name === 'ADMINISTRADOR' ? adminMenuItems : employeeMenuItems;
 
   return (
     <div className={`bg-gray-900 text-white transition-all duration-300 ease-in-out ${
@@ -114,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeTab, onT
                   {user?.firstName} {user?.lastName}
                 </p>
                 <p className="text-xs text-gray-400 capitalize">
-                  {user?.role}
+                  {user?.role?.name}
                 </p>
               </div>
             </div>

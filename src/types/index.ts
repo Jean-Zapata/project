@@ -2,9 +2,10 @@
 export interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  role: 'admin' | 'employee';
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  role: string;
   status: 'active' | 'inactive';
   avatar?: string;
   department?: string;
@@ -101,7 +102,7 @@ export interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'admin' | 'employee';
+  roleId: number;
 }
 
 // Toast Notification Types

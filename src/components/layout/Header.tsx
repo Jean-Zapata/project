@@ -44,12 +44,12 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
             >
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-sm font-medium text-white">
-                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                  {user?.username?.[0]}
                 </span>
               </div>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
-                <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+                <p className="text-sm font-medium">{user?.username}</p>
+                <p className="text-xs text-gray-500 capitalize">{user?.role?.name}</p>
               </div>
               <ChevronDown className="h-4 w-4" />
             </button>
