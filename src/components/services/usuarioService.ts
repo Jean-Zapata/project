@@ -6,6 +6,7 @@ export interface UsuarioAPI {
   username: string;
   email: string;
   activo: boolean;
+  password?: string;
   fechaCreacion?: string;
   ultimoLogin?: string;
   rol: {
@@ -33,6 +34,7 @@ export interface Usuario {
   username: string;
   email: string;
   isActive: boolean;
+  password?: string;
   createdAt: string;
   lastLogin?: string;
   role: {
@@ -226,32 +228,35 @@ class UsuarioService {
 
   async updateUser(id: string, userData: UpdateUsuarioDTO): Promise<Usuario> {
     try {
+      // Obtener el usuario actual para mantener el password si no se proporciona uno nuevo
+      const currentUser = await this.getUserById(id);
+      
       // Construye el payload según lo que espera la API
-      const payload: any = {};
-      
-      if (userData.username !== undefined) payload.username = userData.username;
-      if (userData.email !== undefined) payload.email = userData.email;
-      if (userData.isActive !== undefined) payload.activo = userData.isActive;
-      if (userData.password !== undefined) payload.password = userData.password;
-      
-      // Maneja el rol correctamente
-      if (userData.roleId !== undefined) {
-        payload.rol = { id: userData.roleId };
-      }
+      const payload: Partial<UsuarioAPI> = {
+        username: userData.username,
+        email: userData.email,
+        activo: userData.isActive,
+        password: userData.password || currentUser.password, // Usar el password actual si no se proporciona uno nuevo
+        rol: userData.roleId ? { 
+          id: userData.roleId,
+          nombre: 'Rol', // Estos valores serán actualizados por el backend
+          descripcion: ''
+        } : undefined
+      };
       
       // Maneja el empleado si existe
       if (userData.employee) {
         payload.empleado = {
-          nombres: userData.employee.firstName,
-          apellidos: userData.employee.lastName,
-          dni: userData.employee.dni,
-          email: userData.employee.email,
-          telefono: userData.employee.phone,
-          direccion: userData.employee.address,
-          fechaNacimiento: userData.employee.birthDate,
-          fechaIngreso: userData.employee.hireDate,
+          nombres: userData.employee.firstName || '',
+          apellidos: userData.employee.lastName || '',
+          dni: userData.employee.dni || '',
+          email: userData.employee.email || '',
+          telefono: userData.employee.phone || '',
+          direccion: userData.employee.address || '',
+          fechaNacimiento: userData.employee.birthDate || '',
+          fechaIngreso: userData.employee.hireDate || '',
           salario: userData.employee.salary,
-          estado: userData.employee.status
+          estado: userData.employee.status || ''
         };
       }
 

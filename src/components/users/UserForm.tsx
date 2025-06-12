@@ -160,7 +160,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSubmit, onCancel }) => {
       email: formData.email.trim(),
       roleId: Number(formData.roleId),
       isActive: formData.isActive,
-      ...(formData.password.trim() && { password: formData.password.trim() }),
+      password: formData.password.trim() || undefined,
       employee: (formData.employee.nombres?.trim() && formData.employee.apellidos?.trim()) ? {
         nombres: formData.employee.nombres.trim(),
         apellidos: formData.employee.apellidos.trim(),

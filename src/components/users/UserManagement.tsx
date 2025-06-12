@@ -107,7 +107,8 @@ const UserManagement: React.FC = () => {
           username: userData.username,
           email: userData.email,
           isActive: userData.isActive ?? true,
-          roleId: Number(userData.roleId), // Envía solo el ID del rol
+          roleId: Number(userData.roleId),
+          password: userData.password,
           employee:
             userData.employee &&
             (userData.employee.nombres || userData.employee.firstName)
