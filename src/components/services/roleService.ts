@@ -2,13 +2,22 @@
 const API_BASE_URL = 'http://localhost:9898/api';
 
 // Interfaces actualizadas
+export interface PermissionAPI {
+  id: number;
+  nombre: string;
+  codigo: string;
+  descripcion: string;
+  categoria: string;
+  activo: boolean;
+}
+
 export interface RoleAPI {
   id?: number;
   nombre: string;
   descripcion: string;
   activo: boolean;
   fechaCreacion?: string;
-  permisos: string[];
+  permisos: PermissionAPI[];
 }
 
 export interface Role {
@@ -39,7 +48,7 @@ class RoleService {
       id: apiRole.id?.toString() || '',
       name: apiRole.nombre,
       description: apiRole.descripcion,
-      permissions: apiRole.permisos || [],
+      permissions: Array.isArray(apiRole.permisos) ? apiRole.permisos.map(p => p.codigo) : [],
       createdAt: apiRole.fechaCreacion || new Date().toISOString(),
       updatedAt: apiRole.fechaCreacion || new Date().toISOString(),
       isActive: apiRole.activo,
@@ -52,7 +61,14 @@ class RoleService {
       nombre: role.name || '',
       descripcion: role.description || '',
       activo: role.isActive ?? true,
-      permisos: role.permissions || []
+      permisos: role.permissions ? role.permissions.map(code => ({
+        id: 0,
+        nombre: '',
+        codigo: code,
+        descripcion: '',
+        categoria: '',
+        activo: true
+      })) : []
     };
   }
 
@@ -126,7 +142,6 @@ class RoleService {
     }
   }
 
-  // Nuevos métodos para manejar permisos
   async getRolePermissions(roleId: string): Promise<string[]> {
     try {
       const response = await fetch(`${this.baseURL}/${roleId}/permisos`);

@@ -27,30 +27,29 @@ class EmpleadoService {
   // Obtener estadísticas de empleados
   async getEmpleadoStats(): Promise<EmpleadoStats> {
     try {
-      const response = await fetch(`${this.baseURL}/stats`);
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
-      }
-      const data = await response.json();
-      
-      // Asegurarse de que todos los campos necesarios estén presentes
-      return {
-        totalEmpleados: data.totalEmpleados || 0,
-        empleadosActivos: data.empleadosActivos || 0,
-        empleadosInactivos: data.empleadosInactivos || 0,
-        salarioPromedio: data.salarioPromedio || 0
-      };
+        const response = await fetch(`${this.baseURL}/stats`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.mensaje || `Error: ${response.status}`);
+        }
+        
+        // Validación de datos
+        if (!data || typeof data !== 'object') {
+            throw new Error('Formato de respuesta inválido');
+        }
+        
+        return {
+            totalEmpleados: Number(data.totalEmpleados) || 0,
+            empleadosActivos: Number(data.empleadosActivos) || 0,
+            empleadosInactivos: Number(data.empleadosInactivos) || 0,
+            salarioPromedio: Number(data.salarioPromedio) || 0
+        };
     } catch (error) {
-      console.error('Error fetching employee stats:', error);
-      // Retornar valores por defecto en caso de error
-      return {
-        totalEmpleados: 0,
-        empleadosActivos: 0,
-        empleadosInactivos: 0,
-        salarioPromedio: 0
-      };
+        console.error('Error fetching employee stats:', error);
+        throw error; // Propagar el error para manejarlo en el componente
     }
-  }
+}
 }
 
 export default new EmpleadoService();

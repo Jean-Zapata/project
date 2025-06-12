@@ -78,6 +78,7 @@ export interface UpdateUsuarioDTO {
   email?: string;
   isActive?: boolean;
   roleId?: number;
+  password?: string;
   employee?: {
     firstName?: string;
     lastName?: string;
@@ -231,6 +232,7 @@ class UsuarioService {
       if (userData.username !== undefined) payload.username = userData.username;
       if (userData.email !== undefined) payload.email = userData.email;
       if (userData.isActive !== undefined) payload.activo = userData.isActive;
+      if (userData.password !== undefined) payload.password = userData.password;
       
       // Maneja el rol correctamente
       if (userData.roleId !== undefined) {

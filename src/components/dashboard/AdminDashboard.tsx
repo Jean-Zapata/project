@@ -41,11 +41,14 @@ const AdminDashboard: React.FC = () => {
         });
 
         const empleadosData = await empleadoService.getEmpleadoStats();
+        console.log('Datos de empleados recibidos:', empleadosData);
+        
+        // Asegurarse de que todos los valores sean números válidos
         setEmpleadoStats({
-          totalEmpleados: empleadosData.totalEmpleados || 0,
-          empleadosActivos: empleadosData.empleadosActivos || 0,
-          empleadosInactivos: empleadosData.empleadosInactivos || 0,
-          salarioPromedio: empleadosData.salarioPromedio || 0
+          totalEmpleados: Number(empleadosData.totalEmpleados) || 0,
+          empleadosActivos: Number(empleadosData.empleadosActivos) || 0,
+          empleadosInactivos: Number(empleadosData.empleadosInactivos) || 0,
+          salarioPromedio: Number(empleadosData.salarioPromedio) || 0
         });
 
         // Obtener roles y usuarios

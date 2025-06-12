@@ -347,9 +347,9 @@ const RoleManagement: React.FC = () => {
 
             <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="flex flex-wrap gap-1 mb-3">
-                {role.permissions.slice(0, 3).map((permission, index) => (
+                {role.permissions.slice(0, 3).map((permissionCode, index) => (
                   <span key={index} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded">
-                    {getPermissionName(permission)}
+                    {getPermissionName(permissionCode)}
                   </span>
                 ))}
                 {role.permissions.length > 3 && (
