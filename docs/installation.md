@@ -19,7 +19,7 @@
 ### 1. Clonar el Repositorio
 
 ```bash
-git clone https://github.com/tu-usuario/proyecto.git
+git clone https://github.com/Jean-Zapata/project
 cd proyecto
 ```
 
