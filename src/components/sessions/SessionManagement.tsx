@@ -1,90 +1,144 @@
-import React, { useState } from 'react';
-import { Search, Filter, Download, Calendar, Clock, MapPin, Monitor, Smartphone, Globe, RefreshCw } from 'lucide-react';
-import { UserSession } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, Download, Calendar, Clock, MapPin, Monitor, Smartphone, Globe, RefreshCw, AlertCircle } from 'lucide-react';
+
+// API Service
+const API_BASE_URL = 'http://localhost:9898/api';
+
+interface SesionResponse {
+  id?: number;
+  token: string;
+  fechaInicio: string;
+  fechaExpiracion: string;
+  activa: boolean;
+  ipAddress?: string;
+  userAgent?: string;
+  fechaFin?: string;
+  usuario?: {
+    id: number;
+    username: string;
+    email: string;
+  };
+}
+
+class SesionService {
+  private baseURL = `${API_BASE_URL}/sesiones`;
+
+  async getAllSessions(): Promise<SesionResponse[]> {
+    try {
+      const response = await fetch(this.baseURL);
+      if (!response.ok) {
+        throw new Error('Error al obtener las sesiones');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error al obtener sesiones:', error);
+      throw error;
+    }
+  }
+
+  async closeSession(id: number): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseURL}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          activa: false,
+          fechaFin: new Date().toISOString()
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al cerrar la sesión');
+      }
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+      throw error;
+    }
+  }
+}
+
+const sesionService = new SesionService();
+
+// Transform API data to component format
+const transformSessionData = (apiSession: SesionResponse) => {
+  const now = new Date();
+  const fechaInicio = new Date(apiSession.fechaInicio);
+  const fechaExpiracion = new Date(apiSession.fechaExpiracion);
+  const fechaFin = apiSession.fechaFin ? new Date(apiSession.fechaFin) : null;
+  
+  // Calculate duration
+  let duration = 0;
+  if (fechaFin) {
+    duration = Math.floor((fechaFin.getTime() - fechaInicio.getTime()) / (1000 * 60));
+  } else if (apiSession.activa) {
+    duration = Math.floor((now.getTime() - fechaInicio.getTime()) / (1000 * 60));
+  }
+  
+  // Determine status
+  let status = 'expired';
+  if (apiSession.activa && now < fechaExpiracion) {
+    status = 'active';
+  } else if (!apiSession.activa && fechaFin) {
+    status = 'terminated';
+  }
+
+  // Add test user info if missing
+  let userName = apiSession.usuario?.username || 'Usuario Desconocido';
+  let userEmail = apiSession.usuario?.email || 'email@desconocido.com';
+  
+  // Override with test users if they match
+  if (userEmail === 'admin@company.com') {
+    userName = 'Admin (Prueba)';
+  } else if (userEmail === 'employee@company.com') {
+    userName = 'Employee (Prueba)';
+  }
+
+  return {
+    id: apiSession.id?.toString() || Math.random().toString(),
+    userId: apiSession.usuario?.id?.toString() || '0',
+    userEmail,
+    userName,
+    loginTime: apiSession.fechaInicio,
+    logoutTime: apiSession.fechaFin || undefined,
+    ipAddress: apiSession.ipAddress || 'IP Desconocida',
+    userAgent: apiSession.userAgent || 'User Agent Desconocido',
+    location: 'Ubicación Desconocida', // API doesn't provide location
+    duration,
+    status
+  };
+};
 
 const SessionManagement: React.FC = () => {
-  const [sessions] = useState<UserSession[]>([
-    {
-      id: '1',
-      userId: '1',
-      userEmail: 'admin@company.com',
-      userName: 'John Doe',
-      loginTime: '2024-01-10T08:30:00Z',
-      logoutTime: '2024-01-10T17:45:00Z',
-      ipAddress: '192.168.1.100',
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0',
-      location: 'Madrid, España',
-      duration: 555, // minutes
-      status: 'expired'
-    },
-    {
-      id: '2',
-      userId: '2',
-      userEmail: 'employee@company.com',
-      userName: 'Jane Smith',
-      loginTime: '2024-01-10T09:15:00Z',
-      ipAddress: '192.168.1.101',
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36',
-      location: 'Barcelona, España',
-      status: 'active'
-    },
-    {
-      id: '3',
-      userId: '1',
-      userEmail: 'admin@company.com',
-      userName: 'John Doe',
-      loginTime: '2024-01-09T10:00:00Z',
-      logoutTime: '2024-01-09T18:30:00Z',
-      ipAddress: '192.168.1.100',
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0',
-      location: 'Madrid, España',
-      duration: 510,
-      status: 'expired'
-    },
-    {
-      id: '4',
-      userId: '3',
-      userEmail: 'mike.chen@company.com',
-      userName: 'Mike Chen',
-      loginTime: '2024-01-10T07:45:00Z',
-      logoutTime: '2024-01-10T16:20:00Z',
-      ipAddress: '10.0.0.50',
-      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148',
-      location: 'Valencia, España',
-      duration: 515,
-      status: 'expired'
-    },
-    {
-      id: '5',
-      userId: '2',
-      userEmail: 'employee@company.com',
-      userName: 'Jane Smith',
-      loginTime: '2024-01-08T14:30:00Z',
-      logoutTime: '2024-01-08T14:35:00Z',
-      ipAddress: '192.168.1.101',
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36',
-      location: 'Barcelona, España',
-      duration: 5,
-      status: 'terminated'
-    },
-    {
-      id: '6',
-      userId: '4',
-      userEmail: 'sarah.wilson@company.com',
-      userName: 'Sarah Wilson',
-      loginTime: '2024-01-10T11:20:00Z',
-      ipAddress: '172.16.0.25',
-      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0',
-      location: 'Sevilla, España',
-      status: 'active'
-    }
-  ]);
-
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired' | 'terminated'>('all');
   const [filterDate, setFilterDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Load sessions from API
+  const loadSessions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const apiSessions = await sesionService.getAllSessions();
+      const transformedSessions = apiSessions.map(transformSessionData);
+      setSessions(transformedSessions);
+    } catch (err) {
+      setError('Error al cargar las sesiones. Verifique que la API esté funcionando.');
+      console.error('Error loading sessions:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSessions();
+  }, []);
 
   const filteredSessions = sessions.filter(session => {
     const matchesSearch = 
@@ -165,20 +219,61 @@ const SessionManagement: React.FC = () => {
   };
 
   const handleExport = () => {
-    // En una aplicación real, esto generaría y descargaría un CSV/PDF
     console.log('Exportando datos de sesiones...');
   };
 
-  const handleTerminateSession = (sessionId: string) => {
-    // En una aplicación real, esto haría una llamada a la API para terminar la sesión
-    console.log('Terminando sesión:', sessionId);
+  const handleTerminateSession = async (sessionId: string) => {
+    try {
+      await sesionService.closeSession(parseInt(sessionId));
+      await loadSessions(); // Reload sessions after terminating
+    } catch (error) {
+      console.error('Error terminando sesión:', error);
+    }
+  };
+
+  const handleRefresh = () => {
+    loadSessions();
   };
 
   const activeSessions = sessions.filter(s => s.status === 'active').length;
   const totalSessions = sessions.length;
   const avgDuration = sessions
-    .filter(s => s.duration)
-    .reduce((sum, s) => sum + (s.duration || 0), 0) / sessions.filter(s => s.duration).length;
+    .filter(s => s.duration && s.duration > 0)
+    .reduce((sum, s) => sum + (s.duration || 0), 0) / sessions.filter(s => s.duration && s.duration > 0).length || 0;
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center p-12">
+          <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
+          <span className="ml-3 text-lg text-gray-600">Cargando sesiones...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-center">
+            <AlertCircle className="w-6 h-6 text-red-600 mr-3" />
+            <div>
+              <h3 className="text-lg font-medium text-red-800">Error al cargar sesiones</h3>
+              <p className="text-red-600 mt-1">{error}</p>
+              <button
+                onClick={handleRefresh}
+                className="mt-3 inline-flex items-center px-4 py-2 border border-red-300 rounded-lg text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Reintentar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -188,6 +283,9 @@ const SessionManagement: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">Gestión de Sesiones</h2>
           <p className="mt-1 text-sm text-gray-500">
             Monitorea las sesiones activas y el historial de accesos de usuarios
+          </p>
+          <p className="mt-1 text-xs text-blue-600">
+            Usuarios de prueba: admin@company.com / employee@company.com (password: password)
           </p>
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-2">
@@ -199,7 +297,7 @@ const SessionManagement: React.FC = () => {
             Exportar
           </button>
           <button
-            onClick={() => window.location.reload()}
+            onClick={handleRefresh}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
@@ -441,7 +539,7 @@ const SessionManagement: React.FC = () => {
         )}
       </div>
 
-      {filteredSessions.length === 0 && (
+      {filteredSessions.length === 0 && !loading && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
           <Globe className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron sesiones</h3>
