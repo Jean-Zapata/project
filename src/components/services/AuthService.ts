@@ -1,23 +1,27 @@
 const API_BASE_URL = 'http://localhost:9898/api';
 
 // Backend's Auth Response structure (for /register)
+export interface Empleado {
+  id: number;
+  nombre: string;
+  apellido: string;
+  // Agrega otros campos según sea necesario
+}
+
 export interface BackendAuthResponse {
-  token: string;
-  usuario: {
+  id: number;
+  username: string;
+  email: string;
+  activo: boolean;
+  fechaCreacion: string;
+  ultimoLogin: string | null;
+  empleado: Empleado | null;
+  rol: {
     id: number;
-    username: string;
-    email: string;
+    nombre: string;
+    descripcion: string;
     activo: boolean;
-    fechaCreacion?: string;
-    ultimoLogin?: string;
-    rol: { // Matches backend: 'rol' (lowercase)
-      id: number;
-      nombre: string; // Matches backend: 'nombre'
-      descripcion?: string;
-      activo?: boolean;
-      fechaCreacion?: string;
-      permisos?: any[];
-    };
+    fechaCreacion: string;
   };
 }
 
@@ -27,23 +31,18 @@ export interface BackendSessionResponse {
   token: string;
   fechaInicio: string;
   fechaExpiracion: string;
-  activa: boolean;
-  ipAddress?: string;
-  userAgent?: string;
-  fechaFin?: string;
   usuario: {
     id: number;
     username: string;
     email: string;
-    // Backend's session response also includes the role directly within usuario
-    rol: { // Matches backend: 'rol' (lowercase)
+    activo: boolean;
+    fechaCreacion?: string;
+    ultimoLogin?: string;
+    rol: {
       id: number;
-      nombre: string; // Matches backend: 'nombre'
-      descripcion?: string;
+      nombre: string;
+      descripcion: string;
     };
-    activo?: boolean; // May not always be present in session's usuario
-    fechaCreacion?: string; // May not always be present in session's usuario
-    ultimoLogin?: string; // May not always be present in session's usuario
   };
 }
 
@@ -75,32 +74,38 @@ class AuthService {
 
   // Helper to map BackendAuthResponse (from /register) to Frontend UserAuthData
   private mapBackendAuthResponseToUserAuthData(apiResponse: BackendAuthResponse): UserAuthData {
+    if (!apiResponse) {
+      throw new Error('Respuesta del servidor inválida');
+    }
+
     return {
-      id: apiResponse.usuario.id.toString(),
-      username: apiResponse.usuario.username,
-      email: apiResponse.usuario.email,
-      isActive: apiResponse.usuario.activo,
-      createdAt: apiResponse.usuario.fechaCreacion,
-      lastLogin: apiResponse.usuario.ultimoLogin,
+      id: apiResponse.id.toString(),
+      username: apiResponse.username,
+      email: apiResponse.email,
+      isActive: apiResponse.activo,
+      createdAt: apiResponse.fechaCreacion,
+      lastLogin: apiResponse.ultimoLogin || undefined,
       role: {
-        id: apiResponse.usuario.rol.id,
-        name: apiResponse.usuario.rol.nombre,
-        description: apiResponse.usuario.rol.descripcion,
+        id: apiResponse.rol.id,
+        name: apiResponse.rol.nombre,
+        description: apiResponse.rol.descripcion,
       },
     };
   }
 
   // Helper to map BackendSessionResponse (from /login) to Frontend UserAuthData
   private mapBackendSessionResponseToUserAuthData(apiResponse: BackendSessionResponse): UserAuthData {
-    // Note: The 'usuario' object in BackendSessionResponse might be less complete than BackendAuthResponse
-    // We prioritize what's available and map it to UserAuthData
+    if (!apiResponse || !apiResponse.usuario) {
+      throw new Error('Respuesta del servidor inválida');
+    }
+
     return {
       id: apiResponse.usuario.id.toString(),
       username: apiResponse.usuario.username,
       email: apiResponse.usuario.email,
       isActive: apiResponse.usuario.activo || true, // Default to true if not explicitly provided
       createdAt: apiResponse.usuario.fechaCreacion,
-      lastLogin: apiResponse.usuario.ultimoLogin,
+      lastLogin: apiResponse.usuario.ultimoLogin || undefined,
       role: {
         id: apiResponse.usuario.rol.id,
         name: apiResponse.usuario.rol.nombre,
@@ -194,6 +199,10 @@ class AuthService {
 
       const data: BackendAuthResponse = await response.json();
       console.log('AuthService.register - Success backend auth data:', data);
+
+      if (!data) {
+        throw new Error('Respuesta del servidor inválida');
+      }
 
       // Map the backend auth response to frontend UserAuthData
       return this.mapBackendAuthResponseToUserAuthData(data);

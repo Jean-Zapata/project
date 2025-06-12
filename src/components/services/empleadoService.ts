@@ -10,7 +10,7 @@ export interface EmpleadoStats {
 class EmpleadoService {
   private baseURL = `${API_BASE_URL}/empleados`;
 
-  // Obtener empleados
+  
   async getEmpleados() {
     try {
       const response = await fetch(this.baseURL);
@@ -24,7 +24,7 @@ class EmpleadoService {
     }
   }
 
-  // Obtener estadísticas de empleados
+  
   async getEmpleadoStats(): Promise<EmpleadoStats> {
     try {
         const response = await fetch(`${this.baseURL}/stats`);
@@ -34,7 +34,7 @@ class EmpleadoService {
             throw new Error(data.mensaje || `Error: ${response.status}`);
         }
         
-        // Validación de datos
+        
         if (!data || typeof data !== 'object') {
             throw new Error('Formato de respuesta inválido');
         }
@@ -47,7 +47,7 @@ class EmpleadoService {
         };
     } catch (error) {
         console.error('Error fetching employee stats:', error);
-        throw error; // Propagar el error para manejarlo en el componente
+        throw error; 
     }
 }
 }
