@@ -31,9 +31,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeTab, onT
     { id: 'employees', label: 'Employees', icon: UserCheck },
     { id: 'roles', label: 'Roles', icon: Shield },
     { id: 'sessions', label: 'Sesiones', icon: Globe },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'reports', label: 'Reports', icon: FileText },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    //{ id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    //{ id: 'reports', label: 'Reports', icon: FileText },
+    //{ id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   const employeeMenuItems = [
